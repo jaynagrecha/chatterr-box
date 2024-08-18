@@ -13,16 +13,26 @@
         <table border="1">
             <thead>
                 <tr>
-                    <th>Alias</th>
                     <th>IP Address</th>
+                    <th>Aliases</th>
+                    <th>Recent Activity</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for alias, ip in connected_users.items() %}
+                {% for ip, aliases in connected_users.items() %}
                 <tr>
-                    <td>{{ alias }}</td>
                     <td>{{ ip }}</td>
+                    <td>{{ aliases | join(', ') }}</td>
+                    <td>
+                        <ul>
+                            {% for activity in recent_activity[ip] %}
+                            <li>
+                                <strong>{{ activity[0] }}:</strong> {{ activity[1] }} <small>({{ activity[2] }})</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </td>
                     <td>
                         {% if ip in banned_ips %}
                         <form action="{{ url_for('admin_dashboard') }}" method="POST" style="display:inline;">
