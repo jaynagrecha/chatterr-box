@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, join_room, leave_room, send
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mysecret'
-socketio = SocketIO(app, async_mode='eventlet')
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Ensure CORS is allowed if accessing from other domains
 
 # Updated room names and descriptions
 rooms = ["Rape Punishments", "Country Politics", "LGBTQ is Shit"]
