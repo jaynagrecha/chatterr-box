@@ -139,7 +139,9 @@
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function() {
-            const socket = io.connect('http://' + document.domain + ':' + location.port);
+            const socket = io.connect('https://' + document.domain + ':' + location.port, {
+    transports: ['websocket']
+});
             const chatBox = document.getElementById('chat-box');
 
             socket.emit('join', {
