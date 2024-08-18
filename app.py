@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, join_room, leave_room, send
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mysecret'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')
 
 # Updated room names and descriptions
 rooms = ["Rape Punishments", "Country Politics", "LGBTQ is Shit"]
