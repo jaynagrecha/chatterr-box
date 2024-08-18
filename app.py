@@ -1,9 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, join_room, leave_room, send
+from collections import defaultdict
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mysecret'
 socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
+
+# Admin credentials (should be securely stored in production)
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "password"  # Change this to something secure!
 
 # Room names and descriptions
 rooms = ["Rape Punishments", "Country Politics", "LGBTQ is Shit"]
@@ -13,15 +19,14 @@ descriptions = {
     "LGBTQ is Shit": "An uncensored platform to discuss the crazy shit people who represent themselves as batshit crazy things and such related stuff."
 }
 
-# Admin credentials (this should be stored securely in production)
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "password"  # Change this to something secure!
-
 # List of banned IP addresses
 banned_ips = []
 
-# Dictionary to track connected users {alias: ip}
+# Dictionary to track connected users {ip: [aliases]}
 connected_users = {}
+
+# Dictionary to track recent messages {ip: [(alias, message, timestamp)]}
+recent_activity = defaultdict(list)
 
 def get_user_ip():
     """Helper function to get the user's IP address."""
@@ -46,6 +51,12 @@ def select_room():
         return render_template('banned.html', alias=alias, ip=user_ip)
 
     if alias:
+        # Add alias to the connected users list for the IP
+        if user_ip in connected_users:
+            if alias not in connected_users[user_ip]:
+                connected_users[user_ip].append(alias)
+        else:
+            connected_users[user_ip] = [alias]
         return render_template('select_room.html', alias=alias, rooms=rooms, descriptions=descriptions)
     return redirect(url_for('index'))
 
@@ -62,7 +73,6 @@ def chat():
         return render_template('banned.html', alias=alias, ip=user_ip)
     
     if alias and room:
-        connected_users[alias] = user_ip  # Track connected users
         return render_template('chat.html', alias=alias, room=room)
     return redirect(url_for('index'))
 
@@ -97,7 +107,7 @@ def admin_dashboard():
         elif action == "unban" and ip_to_manage in banned_ips:
             banned_ips.remove(ip_to_manage)
     
-    return render_template('admin_dashboard.html', connected_users=connected_users, banned_ips=banned_ips)
+    return render_template('admin_dashboard.html', connected_users=connected_users, banned_ips=banned_ips, recent_activity=recent_activity)
 
 @socketio.on('join')
 def handle_join(data):
@@ -118,8 +128,11 @@ def handle_join(data):
 def handle_leave(data):
     alias = data['alias']
     room = data['room']
-    if alias in connected_users:
-        del connected_users[alias]  # Remove user from tracking when they leave
+    user_ip = get_user_ip()
+    if user_ip in connected_users and alias in connected_users[user_ip]:
+        connected_users[user_ip].remove(alias)
+        if not connected_users[user_ip]:  # Remove the IP if no aliases are left
+            del connected_users[user_ip]
     leave_room(room)
     send(f'{alias} has left the {room} room.', to=room)
 
@@ -135,6 +148,14 @@ def handle_message(data):
     # Prevent sending messages if the user's IP is banned
     if user_ip in banned_ips:
         return
+    
+    # Log the message with timestamp
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    recent_activity[user_ip].append((alias, message, timestamp))
+    
+    # Keep only the last 10 messages per IP to avoid clutter
+    if len(recent_activity[user_ip]) > 10:
+        recent_activity[user_ip] = recent_activity[user_ip][-10:]
     
     send(f'{alias}: {message}', to=room)
 
