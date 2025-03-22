@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, join_room, leave_room, send
+from flask_cors import CORS, cross_origin
 from collections import defaultdict
 from datetime import datetime
 
 app = Flask(__name__)
+cors = CORS(app)
 app.config['SECRET_KEY'] = 'mysecret'
+app.config['CORS_HEADERS'] = 'Content-Type'
 socketio = SocketIO(app, async_mode='eventlet')
 
 # Admin credentials (should be securely stored in production)
@@ -14,7 +17,7 @@ ADMIN_PASSWORD = "password"  # Change this to something secure!
 # Room names and descriptions
 rooms = ["Rape Punishments", "Country Politics", "LGBTQ is Shit"]
 descriptions = {
-    "Rape Punishments": "An open uncensored stage to discuss what should be done as punishment for rapes.",
+    "Rape Punishments": "An open uncensored stage to discuss what should be done as punishment to rapists.",
     "Country Politics": "An open platform to discuss hot politics of any country without censorship.",
     "LGBTQ is Shit": "An uncensored platform to discuss the crazy shit people who represent themselves as batshit crazy things and such related stuff."
 }
@@ -36,10 +39,12 @@ def get_user_ip():
         return request.environ['REMOTE_ADDR']
 
 @app.route('/')
+@cross_origin()
 def index():
     return render_template('index.html')
 
 @app.route('/select_room', methods=['GET', 'POST'])
+@cross_origin()
 def select_room():
     alias = request.form.get('alias') if request.method == 'POST' else request.args.get('alias')
     
@@ -61,6 +66,7 @@ def select_room():
     return redirect(url_for('index'))
 
 @app.route('/chat', methods=['GET', 'POST'])
+@cross_origin()
 def chat():
     alias = request.form.get('alias') if request.method == 'POST' else request.args.get('alias')
     room = request.form.get('room') if request.method == 'POST' else request.args.get('room')
@@ -77,6 +83,7 @@ def chat():
     return redirect(url_for('index'))
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@cross_origin()
 def admin_login():
     if request.method == 'POST':
         username = request.form['username']
@@ -89,11 +96,13 @@ def admin_login():
     return render_template('admin_login.html')
 
 @app.route('/admin/logout')
+@cross_origin()
 def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect(url_for('admin_login'))
 
 @app.route('/admin/dashboard', methods=['GET', 'POST'])
+@cross_origin()
 def admin_dashboard():
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
